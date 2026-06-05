@@ -38,9 +38,13 @@ module.exports = async function handler(req, res) {
   }
 
   const rawUrl = req.url.replace(/\?.*$/, '');
-  // Vercel strips /api prefix before passing to handler, normalize it
   const url    = rawUrl.startsWith('/api') ? rawUrl : '/api' + rawUrl;
   const method = req.method;
+
+  // ── DEBUG ────────────────────────────────────────────────
+  if (rawUrl === '/debug' || rawUrl === '/api/debug') {
+    return json(res, { rawUrl, url, method, headers: req.headers });
+  }
 
   try {
     const db = await getDB();
