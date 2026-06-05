@@ -645,7 +645,130 @@
       color: var(--muted);
     }
 
-    @media (max-width: 768px) {
+    /* ── COMMENT BOX ──────────────────────────────────────── */
+    .comment-box {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 3px;
+      background: var(--paper);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      color: var(--ink);
+      outline: none;
+      resize: vertical;
+      min-height: 72px;
+      transition: border-color 0.15s;
+      line-height: 1.5;
+    }
+    .comment-box:focus { border-color: var(--gold); background: var(--white); }
+    .comment-label {
+      font-size: 0.68rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    /* ── EXPORT / MONTH CARDS ─────────────────────────────── */
+    .month-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: var(--shadow);
+    }
+    .month-card:hover { border-color: var(--gold); background: var(--gold-pale); }
+    .month-card-label {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .month-card-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .month-card-arrow { font-size: 1.2rem; color: var(--gold); }
+
+    /* ── EXPORT EMPLOYEE CARD ─────────────────────────────── */
+    .export-emp-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      page-break-inside: avoid;
+    }
+    .export-emp-header {
+      background: var(--ink);
+      color: var(--gold-pale);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .export-emp-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+    }
+    .export-emp-desig {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: rgba(245,233,200,0.6);
+      margin-top: 2px;
+    }
+    .export-nett {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .export-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .export-col { padding: 16px 24px; }
+    .export-col:first-child { border-right: 1px solid var(--border); }
+    .export-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px dotted var(--border);
+      font-size: 0.83rem;
+    }
+    .export-row:last-child { border-bottom: none; }
+    .export-row-label { color: var(--muted); }
+    .export-row-val { font-family: 'DM Mono', monospace; font-weight: 500; }
+    .export-row-val.earn { color: var(--teal); }
+    .export-row-val.deduct { color: var(--rust); }
+    .export-comment {
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--paper);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .export-comment strong { color: var(--ink); font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; }
+
+    @media print {
+      .tabnav, .topbar, .btn-row, .month-selector, .page-header,
+      #exportMonthList, .btn-logout, .tab-btn { display: none !important; }
+      .export-emp-card { page-break-inside: avoid; margin-bottom: 32px; }
+      body { background: white; }
+    }
       .g2, .g3, .g4 { grid-template-columns: 1fr 1fr; }
       .main-content { padding: 24px 16px; }
       .tabnav { padding: 0 16px; }
@@ -716,6 +839,9 @@
     </button>
     <button class="tab-btn" onclick="switchTab('remove')" id="tab-remove">
       <span class="tab-icon">🗑️</span> Remove Employee
+    </button>
+    <button class="tab-btn" onclick="switchTab('export')" id="tab-export">
+      <span class="tab-icon">📊</span> Export Data
     </button>
   </div>
 
@@ -808,6 +934,31 @@
       </div>
     </div>
 
+    <!-- ── TAB: EXPORT DATA ─────────────────────────────────── -->
+    <div class="tab-panel" id="panel-export">
+      <div class="page-header">
+        <div class="section-tag">Reports</div>
+        <div class="page-title">Export Data</div>
+        <div class="page-sub">Select a month to view all employee salary details. Print for CA or records.</div>
+      </div>
+      <div id="exportMonthList">
+        <div class="empty"><div class="empty-icon">📅</div>Loading months...</div>
+      </div>
+      <div id="exportView" style="display:none; margin-top:28px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px">
+          <div>
+            <div class="section-tag" id="exportMonthLabel"></div>
+            <div style="font-size:0.85rem; color:var(--muted)" id="exportEmpCount"></div>
+          </div>
+          <div style="display:flex; gap:10px">
+            <button class="btn btn-teal" onclick="printExport()">🖨 Print All Slips</button>
+            <button class="btn btn-secondary" onclick="closeExportView()">← Back to Months</button>
+          </div>
+        </div>
+        <div id="exportCards"></div>
+      </div>
+    </div>
+
   </div><!-- /main-content -->
 </div><!-- /appPage -->
 
@@ -824,9 +975,9 @@
       <input type="hidden" id="em_id"/>
       <div class="g3">
         <div class="field"><label>Full Name *</label>
-          <input type="text" id="em_name"/></div>
+          <input type="text" id="em_name" autocomplete="off"/></div>
         <div class="field"><label>Designation</label>
-          <input type="text" id="em_desig"/></div>
+          <input type="text" id="em_desig" autocomplete="off"/></div>
         <div class="field"><label>Date of Joining</label>
           <input type="date" id="em_doj"/></div>
       </div>
@@ -834,13 +985,13 @@
       <div class="card-title">// Salary Structure</div>
       <div class="g4">
         <div class="field"><label>Salary / Day (₹)</label>
-          <input type="number" id="em_spd" min="0"/></div>
+          <input type="number" id="em_spd" step="any" style="pointer-events:auto"/></div>
         <div class="field"><label>Extra Day Rate (₹)</label>
-          <input type="number" id="em_edr" min="0"/></div>
+          <input type="number" id="em_edr" step="any" style="pointer-events:auto"/></div>
         <div class="field"><label>TDS %</label>
-          <input type="number" id="em_tds" min="0" max="100" step="0.01"/></div>
+          <input type="number" id="em_tds" step="any" max="100" style="pointer-events:auto"/></div>
         <div class="field"><label>Professional Tax (₹)</label>
-          <input type="number" id="em_pt" min="0"/></div>
+          <input type="number" id="em_pt" step="any" style="pointer-events:auto"/></div>
       </div>
       <hr class="divider"/>
       <div class="card-title">// Salary History</div>
@@ -934,6 +1085,7 @@ function switchTab(name) {
   document.getElementById('panel-' + name).classList.add('active');
   if (name === 'edit')   renderEditTable();
   if (name === 'remove') renderRemoveList();
+  if (name === 'export') loadExportMonths();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1262,6 +1414,11 @@ async function loadSalaryModule() {
           </div>
         </div>
 
+        <div style="margin-top:16px">
+          <label class="comment-label">📝 Comments / Notes for this month</label>
+          <textarea class="comment-box" id="comment_${k}" placeholder="e.g. Late by 2 days in first week, bonus for Diwali...">${saved ? (saved.comment || '') : ''}</textarea>
+        </div>
+
         <div class="btn-row">
           <button class="btn btn-primary" onclick="saveSalaryRow(${k})">
             💾 Save Salary
@@ -1339,6 +1496,7 @@ async function saveSalaryRow(k) {
     gross:            c.gross,
     tds_amount:       c.tdsAmt,
     nett:             c.nett,
+    comment:          (document.getElementById('comment_' + k)?.value || '').trim(),
   };
 
   try {
@@ -1443,6 +1601,112 @@ function printSalarySlip(k) {
   w.document.write(html);
   w.document.close();
   w.print();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT DATA
+// ═══════════════════════════════════════════════════════════
+async function loadExportMonths() {
+  const wrap = document.getElementById('exportMonthList');
+  document.getElementById('exportView').style.display = 'none';
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading...</div>';
+
+  try {
+    const res  = await fetch('/api/export/months');
+    const data = await res.json();
+    if (!data.months || !data.months.length) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>No salary records processed yet.</div>';
+      return;
+    }
+    wrap.innerHTML = data.months.map(m => {
+      const [yr, mo] = m.split('-');
+      const label = new Date(yr, mo-1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      return `
+        <div class="month-card" onclick="loadExportView('${m}', '${label}')">
+          <div>
+            <div class="month-card-label">${label}</div>
+            <div class="month-card-meta">Click to view all employee salary details</div>
+          </div>
+          <div class="month-card-arrow">→</div>
+        </div>`;
+    }).join('');
+  } catch {
+    wrap.innerHTML = '<div class="empty">Could not load months.</div>';
+  }
+}
+
+async function loadExportView(month, label) {
+  document.getElementById('exportMonthList').style.display = 'none';
+  const view = document.getElementById('exportView');
+  view.style.display = 'block';
+  document.getElementById('exportMonthLabel').textContent = label;
+  document.getElementById('exportCards').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading...</div>';
+
+  try {
+    const res  = await fetch('/api/salary/' + month);
+    const data = await res.json();
+    const records = data.records || [];
+    document.getElementById('exportEmpCount').textContent = records.length + ' employee(s) processed';
+
+    if (!records.length) {
+      document.getElementById('exportCards').innerHTML = '<div class="empty">No records for this month.</div>';
+      return;
+    }
+
+    document.getElementById('exportCards').innerHTML = records.map(r => {
+      const base  = parseFloat(r.salary_per_day||0) * parseFloat(r.days_present||0);
+      const extra = parseFloat(r.extra_day_rate||0) * parseFloat(r.extra_days||0);
+      return `
+      <div class="export-emp-card">
+        <div class="export-emp-header">
+          <div>
+            <div class="export-emp-name">${r.name}</div>
+            <div class="export-emp-desig">${r.designation || 'Staff'} &nbsp;·&nbsp; DOJ: ${r.doj || '—'}</div>
+          </div>
+          <div class="export-nett">${fmt(parseFloat(r.nett||0))}</div>
+        </div>
+        <div class="export-grid">
+          <div class="export-col">
+            <div style="font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-family:'DM Mono',monospace; margin-bottom:10px">Attendance & Earnings</div>
+            <div class="export-row"><span class="export-row-label">Total Days</span><span class="export-row-val">30</span></div>
+            <div class="export-row"><span class="export-row-label">Days Present</span><span class="export-row-val earn">${r.days_present}</span></div>
+            <div class="export-row"><span class="export-row-label">Days Absent</span><span class="export-row-val deduct">${r.days_absent}</span></div>
+            <div class="export-row"><span class="export-row-label">Extra Days</span><span class="export-row-val">${r.extra_days}</span></div>
+            <div class="export-row"><span class="export-row-label">Base Salary</span><span class="export-row-val earn">${fmt(base)}</span></div>
+            <div class="export-row"><span class="export-row-label">Extra Earnings</span><span class="export-row-val earn">${fmt(extra)}</span></div>
+            <div class="export-row"><span class="export-row-label">Incentive</span><span class="export-row-val earn">${fmt(parseFloat(r.incentive||0))}</span></div>
+            <div class="export-row"><span class="export-row-label">Other Dues</span><span class="export-row-val earn">${fmt(parseFloat(r.other_dues||0))}</span></div>
+            <div class="export-row" style="font-weight:600"><span class="export-row-label">Gross Salary</span><span class="export-row-val">${fmt(parseFloat(r.gross||0))}</span></div>
+          </div>
+          <div class="export-col">
+            <div style="font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--rust); font-family:'DM Mono',monospace; margin-bottom:10px">Deductions</div>
+            <div class="export-row"><span class="export-row-label">TDS (${r.tds_percent}%)</span><span class="export-row-val deduct">${fmt(parseFloat(r.tds_amount||0))}</span></div>
+            <div class="export-row"><span class="export-row-label">Advance</span><span class="export-row-val deduct">${fmt(parseFloat(r.advance||0))}</span></div>
+            <div class="export-row"><span class="export-row-label">Other Deductions</span><span class="export-row-val deduct">${fmt(parseFloat(r.other_deductions||0))}</span></div>
+            <div class="export-row"><span class="export-row-label">Professional Tax</span><span class="export-row-val deduct">${fmt(parseFloat(r.prof_tax||0))}</span></div>
+            <div class="export-row" style="margin-top:12px; padding-top:12px; border-top:2px solid var(--border); font-weight:700">
+              <span class="export-row-label" style="color:var(--ink)">Net Payable</span>
+              <span class="export-row-val" style="color:var(--gold); font-size:1rem">${fmt(parseFloat(r.nett||0))}</span>
+            </div>
+            <div style="margin-top:16px; font-size:0.72rem; color:var(--muted); font-family:'DM Mono',monospace">Processed: ${r.processed_at || '—'}</div>
+          </div>
+        </div>
+        ${r.comment ? `<div class="export-comment"><strong>📝 Note</strong><br/>${r.comment}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('exportCards').innerHTML = '<div class="empty">Could not load records.</div>';
+  }
+}
+
+function closeExportView() {
+  document.getElementById('exportView').style.display = 'none';
+  document.getElementById('exportMonthList').style.display = 'block';
+}
+
+function printExport() {
+  window.print();
 }
 
 // ═══════════════════════════════════════════════════════════
