@@ -1508,7 +1508,18 @@ async function saveSalaryRow(k) {
     const data = await res.json();
     if (data.success) {
       toast(emp.name + '\'s salary saved for ' + currentMonth, 'ok');
-      loadSalaryModule();
+      // Just update the saved badge — don't re-render entire list
+      const preview = document.querySelector(`#src_${k} .salary-row-preview`);
+      if (preview) {
+        // Remove old badge if exists
+        const old = preview.querySelector('.saved-badge');
+        if (old) old.remove();
+        // Add fresh badge
+        const badge = document.createElement('div');
+        badge.className = 'saved-badge';
+        badge.textContent = '✓ Saved for ' + currentMonth;
+        preview.insertBefore(badge, preview.firstChild);
+      }
     } else {
       toast('Error: ' + data.error, 'err');
     }
