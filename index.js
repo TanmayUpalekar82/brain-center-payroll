@@ -185,9 +185,10 @@ module.exports = async function handler(req, res) {
 
     // ── GET ALL PROCESSED MONTHS ────────────────────────────
     if (url === '/api/export/months' && method === 'GET') {
-      const rows = await salaryRecords.distinct('month');
-      rows.sort((a, b) => b.localeCompare(a));
-      return json(res, { success: true, months: rows });
+      const rows = await salaryRecords.find({}, { projection: { month: 1 } }).toArray();
+      const months = [...new Set(rows.map(r => r.month))].filter(Boolean);
+      months.sort((a, b) => b.localeCompare(a));
+      return json(res, { success: true, months });
     }
 
     return json(res, { success: false, error: 'Route not found' }, 404);
