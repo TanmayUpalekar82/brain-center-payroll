@@ -1017,7 +1017,7 @@ function renderEditTable() {
             <td>${parseFloat(e.tds_percent||0)}%</td>
             <td class="td-red">₹${parseFloat(e.prof_tax||0).toFixed(0)}</td>
             <td><div class="action-cell">
-              <button class="act-btn act-edit" onclick="openEditModal(${e.id})">Edit</button>
+              <button class="act-btn act-edit" data-id="${e.id}" onclick="openEditModal(this.dataset.id)">Edit</button>
             </div></td>
           </tr>`).join('')}
       </tbody>
@@ -1121,7 +1121,8 @@ function renderRemoveList() {
           ${e.designation || 'Staff'} &nbsp;·&nbsp; DOJ: ${e.doj || '—'} &nbsp;·&nbsp; ₹${e.salary_per_day}/day
         </div>
       </div>
-      <button class="btn btn-danger" onclick="removeEmployee(${e.id}, '${e.name.replace(/'/g,"\\'")}')">
+      <button class="btn btn-danger" data-id="${e.id}" data-name="${e.name.replace(/"/g,'&quot;')}"
+              onclick="removeEmployee(this.dataset.id, this.dataset.name)">
         Remove Staff
       </button>
     </div>`).join('');
@@ -1169,101 +1170,103 @@ async function loadSalaryModule() {
     (data.records || []).forEach(r => { savedMap[r.employee_id] = r; });
   } catch { /* server offline */ }
 
-  wrap.innerHTML = allEmployees.map(emp => {
+  // Use index-based keys to avoid hex ID issues in DOM
+  wrap.innerHTML = allEmployees.map((emp, idx) => {
     const saved = savedMap[emp.id];
-    const absentVal     = saved ? saved.days_absent      : 0;
-    const extraVal      = saved ? saved.extra_days        : 0;
-    const incentiveVal  = saved ? saved.incentive         : 0;
-    const otherDuesVal  = saved ? saved.other_dues        : 0;
-    const advanceVal    = saved ? saved.advance           : 0;
-    const otherDedVal   = saved ? saved.other_deductions  : 0;
-    const isSaved       = !!saved;
+    const absentVal    = saved ? saved.days_absent     : 0;
+    const extraVal     = saved ? saved.extra_days       : 0;
+    const incentiveVal = saved ? saved.incentive        : 0;
+    const otherDuesVal = saved ? saved.other_dues       : 0;
+    const advanceVal   = saved ? saved.advance          : 0;
+    const otherDedVal  = saved ? saved.other_deductions : 0;
+    const isSaved      = !!saved;
+    const k = idx; // safe numeric key for DOM IDs
 
     return `
-    <div class="salary-row-card" id="src_${emp.id}">
-      <div class="salary-row-header" onclick="toggleSalaryRow(${emp.id})">
+    <div class="salary-row-card" id="src_${k}" data-empid="${emp.id}">
+      <div class="salary-row-header" onclick="toggleSalaryRow(${k})">
         <div class="emp-info">
           <div class="emp-name-lg">${emp.name}</div>
           <div class="emp-meta">${emp.designation || 'Staff'} &nbsp;·&nbsp; ₹${emp.salary_per_day}/day</div>
         </div>
         <div class="salary-row-preview">
           ${isSaved ? `<div class="saved-badge">✓ Saved for ${currentMonth}</div>` : ''}
-          <div class="preview-pill">Net: <span id="prev_nett_${emp.id}">—</span></div>
+          <div class="preview-pill">Net: <span id="prev_nett_${k}">—</span></div>
           <div class="chevron">▾</div>
         </div>
       </div>
-      <div class="salary-row-body" id="srb_${emp.id}">
+      <div class="salary-row-body" id="srb_${k}">
         <div class="g4">
           <div class="field">
             <label>Total Days</label>
-            <input type="number" value="${TOTAL_DAYS}" readonly class="field input readonly-gold"/>
+            <input type="number" value="${TOTAL_DAYS}" readonly class="readonly-gold"/>
           </div>
           <div class="field">
             <label>Days Absent</label>
-            <input type="number" id="absent_${emp.id}" value="${absentVal}" min="0" max="30"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="absent_${k}" value="${absentVal}" min="0" max="30"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
           <div class="field">
             <label>Days Present — Auto</label>
-            <input type="number" id="present_${emp.id}" readonly class="field input"/>
+            <input type="number" id="present_${k}" readonly/>
           </div>
           <div class="field">
             <label>Extra Days Worked</label>
-            <input type="number" id="extra_${emp.id}" value="${extraVal}" min="0"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="extra_${k}" value="${extraVal}" min="0"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
         </div>
         <div class="g4" style="margin-top:14px">
           <div class="field">
             <label>Incentive (₹)</label>
-            <input type="number" id="incentive_${emp.id}" value="${incentiveVal}" min="0"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="incentive_${k}" value="${incentiveVal}" min="0"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
           <div class="field">
             <label>Other Dues (₹)</label>
-            <input type="number" id="dues_${emp.id}" value="${otherDuesVal}" min="0"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="dues_${k}" value="${otherDuesVal}" min="0"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
           <div class="field">
             <label>Advance (₹)</label>
-            <input type="number" id="advance_${emp.id}" value="${advanceVal}" min="0"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="advance_${k}" value="${advanceVal}" min="0"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
           <div class="field">
             <label>Other Deductions (₹)</label>
-            <input type="number" id="othded_${emp.id}" value="${otherDedVal}" min="0"
-                   oninput="calcRow(${emp.id}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
+            <input type="number" id="othded_${k}" value="${otherDedVal}" min="0"
+                   oninput="calcRow(${k}, ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})"/>
           </div>
         </div>
 
         <div class="salary-summary-strip" style="margin-top:20px">
           <div class="strip-item">
             <div class="strip-label">Base Salary</div>
-            <div class="strip-val earn" id="s_base_${emp.id}">₹0</div>
+            <div class="strip-val earn" id="s_base_${k}">₹0</div>
           </div>
           <div class="strip-item">
             <div class="strip-label">Gross</div>
-            <div class="strip-val" id="s_gross_${emp.id}">₹0</div>
+            <div class="strip-val" id="s_gross_${k}">₹0</div>
           </div>
           <div class="strip-item">
             <div class="strip-label">TDS (${emp.tds_percent}%)</div>
-            <div class="strip-val deduct" id="s_tds_${emp.id}">₹0</div>
+            <div class="strip-val deduct" id="s_tds_${k}">₹0</div>
           </div>
           <div class="strip-item">
             <div class="strip-label">Total Deductions</div>
-            <div class="strip-val deduct" id="s_ded_${emp.id}">₹0</div>
+            <div class="strip-val deduct" id="s_ded_${k}">₹0</div>
           </div>
           <div class="strip-item">
             <div class="strip-label">Net Payable</div>
-            <div class="strip-val nett" id="s_nett_${emp.id}">₹0</div>
+            <div class="strip-val nett" id="s_nett_${k}">₹0</div>
           </div>
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="saveSalaryRow(${emp.id}, '${emp.name.replace(/'/g,"\\'")}', ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})">
+          <button class="btn btn-primary" onclick="saveSalaryRow(${k})">
             💾 Save Salary
           </button>
-          <button class="btn btn-teal" onclick="printSalarySlip(${emp.id}, '${emp.name.replace(/'/g,"\\'")}', '${emp.designation||''}', ${emp.salary_per_day}, ${emp.extra_day_rate}, ${emp.tds_percent}, ${emp.prof_tax})">
+          <button class="btn btn-teal" onclick="printSalarySlip(${k})">
             🖨 Print Slip
           </button>
         </div>
@@ -1271,9 +1274,13 @@ async function loadSalaryModule() {
     </div>`;
   }).join('');
 
+  // Store employee data map by index for later use
+  window._salEmpMap = {};
+  allEmployees.forEach((emp, idx) => { window._salEmpMap[idx] = emp; });
+
   // Initial calc for all
-  allEmployees.forEach(emp => {
-    calcRow(emp.id, emp.salary_per_day, emp.extra_day_rate, emp.tds_percent, emp.prof_tax);
+  allEmployees.forEach((emp, idx) => {
+    calcRow(idx, emp.salary_per_day, emp.extra_day_rate, emp.tds_percent, emp.prof_tax);
   });
 }
 
@@ -1315,10 +1322,12 @@ function calcRow(id, spd, edr, tdsPct, profTax) {
   return { present, absent, extra, incentive, dues, advance, othDed, gross, tdsAmt, totalDed, nett };
 }
 
-async function saveSalaryRow(id, name, spd, edr, tdsPct, profTax) {
-  const c = calcRow(id, spd, edr, tdsPct, profTax);
+async function saveSalaryRow(k) {
+  const emp = window._salEmpMap[k];
+  if (!emp) { toast('Employee not found.', 'err'); return; }
+  const c = calcRow(k, emp.salary_per_day, emp.extra_day_rate, emp.tds_percent, emp.prof_tax);
   const payload = {
-    employee_id:      id,
+    employee_id:      emp.id,
     month:            currentMonth,
     days_present:     c.present,
     days_absent:      c.absent,
@@ -1340,8 +1349,8 @@ async function saveSalaryRow(id, name, spd, edr, tdsPct, profTax) {
     });
     const data = await res.json();
     if (data.success) {
-      toast(name + '\'s salary saved for ' + currentMonth, 'ok');
-      loadSalaryModule(); // refresh to show saved badge
+      toast(emp.name + '\'s salary saved for ' + currentMonth, 'ok');
+      loadSalaryModule();
     } else {
       toast('Error: ' + data.error, 'err');
     }
@@ -1350,8 +1359,16 @@ async function saveSalaryRow(id, name, spd, edr, tdsPct, profTax) {
   }
 }
 
-function printSalarySlip(id, name, designation, spd, edr, tdsPct, profTax) {
-  const c    = calcRow(id, spd, edr, tdsPct, profTax);
+function printSalarySlip(k) {
+  const emp = window._salEmpMap[k];
+  if (!emp) { toast('Employee not found.', 'err'); return; }
+  const name        = emp.name;
+  const designation = emp.designation || '';
+  const spd         = emp.salary_per_day;
+  const edr         = emp.extra_day_rate;
+  const tdsPct      = emp.tds_percent;
+  const profTax     = emp.prof_tax;
+  const c    = calcRow(k, spd, edr, tdsPct, profTax);
   const base = spd * c.present;
   const extra= edr * c.extra;
   const [yr, mo] = currentMonth.split('-');
