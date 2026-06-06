@@ -24,6 +24,18 @@ function json(res, data, status = 200) {
   res.status(status).json(data);
 }
 
+// Match a route regardless of /api prefix
+function match(url, pattern) {
+  const clean = url.replace(/^\/api/, '').replace(/^\//, '');
+  const pat   = pattern.replace(/^\//, '');
+  return clean === pat;
+}
+
+function matchRegex(url, regex) {
+  const clean = url.replace(/^\/api/, '');
+  return clean.match(regex);
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,14 +44,12 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Vercel strips /api prefix — normalize so /login === /api/login
-  const raw    = req.url.replace(/\?.*$/, '');
-  const url    = raw.replace(/^\/api/, '') || '/';
+  const url    = req.url.replace(/\?.*$/, '');
   const method = req.method;
 
-  // DEBUG
-  if (url === '/debug') {
-    return json(res, { raw, url, method });
+  // DEBUG — always works regardless of prefix
+  if (url.includes('debug')) {
+    return json(res, { url, method, nodejs: process.version });
   }
 
   try {
@@ -48,7 +58,7 @@ module.exports = async function handler(req, res) {
     const salaryRecords = db.collection('salary_records');
 
     // ── AUTH ──────────────────────────────────────────────
-    if (url === '/login' && method === 'POST') {
+    if (match(url, 'login') && method === 'POST') {
       const { username, password } = req.body;
       if (username === 'admin' && password === 'bc@123') {
         return json(res, { success: true, name: 'Dr. Pawan Ojha' });
@@ -57,13 +67,13 @@ module.exports = async function handler(req, res) {
     }
 
     // ── GET ALL EMPLOYEES ──────────────────────────────────
-    if (url === '/employees' && method === 'GET') {
+    if (match(url, 'employees') && method === 'GET') {
       const rows = await employees.find({ active: 1 }).sort({ name: 1 }).toArray();
       return json(res, { success: true, employees: rows.map(e => ({ ...e, id: e._id.toString() })) });
     }
 
     // ── ADD EMPLOYEE ───────────────────────────────────────
-    if (url === '/employees' && method === 'POST') {
+    if (match(url, 'employees') && method === 'POST') {
       const d = req.body;
       const doc = {
         name:           d.name,
@@ -81,7 +91,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── SINGLE EMPLOYEE ────────────────────────────────────
-    const empMatch = url.match(/^\/employees\/([a-f0-9]{24})$/i);
+    const empMatch = matchRegex(url, /^\/employees\/([a-f0-9]{24})$/i);
     if (empMatch) {
       const id = empMatch[1];
 
@@ -116,7 +126,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── EXPORT MONTHS ──────────────────────────────────────
-    if (url === '/export/months' && method === 'GET') {
+    if (match(url, 'export/months') && method === 'GET') {
       const rows   = await salaryRecords.find({}, { projection: { month: 1 } }).toArray();
       const months = [...new Set(rows.map(r => r.month))].filter(Boolean);
       months.sort((a, b) => b.localeCompare(a));
@@ -124,7 +134,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── GET SALARY BY MONTH ────────────────────────────────
-    const salMonthMatch = url.match(/^\/salary\/(.+)$/);
+    const salMonthMatch = matchRegex(url, /^\/salary\/(.+)$/);
     if (salMonthMatch && method === 'GET') {
       const month = salMonthMatch[1];
       const rows  = await salaryRecords.find({ month }).toArray();
@@ -147,7 +157,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── SAVE SALARY ────────────────────────────────────────
-    if (url === '/salary' && method === 'POST') {
+    if (match(url, 'salary') && method === 'POST') {
       const d        = req.body;
       const existing = await salaryRecords.findOne({ employee_id: d.employee_id, month: d.month });
       const salDoc   = {
@@ -174,7 +184,8 @@ module.exports = async function handler(req, res) {
       return json(res, { success: true });
     }
 
-    return json(res, { success: false, error: 'Route not found', url, raw }, 404);
+    // 404 with debug info
+    return json(res, { success: false, error: 'Route not found', url }, 404);
 
   } catch (err) {
     console.error(err);
