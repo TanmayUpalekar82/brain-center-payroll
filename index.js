@@ -57,10 +57,28 @@ module.exports = async function handler(req, res) {
     const employees     = db.collection('employees');
     const salaryRecords = db.collection('salary_records');
 
+    // ── CHANGE PASSWORD ────────────────────────────────────
+    if (match(url, 'change-password') && method === 'POST') {
+      const { current, newPass } = req.body;
+      // Read stored password from env or default
+      const stored = process.env.APP_PASSWORD || 'bc@123';
+      if (current !== stored) {
+        return json(res, { success: false, message: 'Current password is incorrect' }, 401);
+      }
+      // Store new password in MongoDB settings collection
+      const settings = db.collection('settings');
+      await settings.updateOne({ key: 'password' }, { $set: { key: 'password', value: newPass } }, { upsert: true });
+      return json(res, { success: true });
+    }
+
     // ── AUTH ──────────────────────────────────────────────
     if (match(url, 'login') && method === 'POST') {
       const { username, password } = req.body;
-      if (username === 'admin' && password === 'bc@123') {
+      // Check MongoDB for custom password first
+      const settings  = db.collection('settings');
+      const pwdRecord = await settings.findOne({ key: 'password' });
+      const validPass = pwdRecord ? pwdRecord.value : (process.env.APP_PASSWORD || 'bc@123');
+      if (username === 'admin' && password === validPass) {
         return json(res, { success: true, name: 'Dr. Pawan Ojha' });
       }
       return json(res, { success: false, message: 'Invalid credentials' }, 401);
@@ -79,6 +97,8 @@ module.exports = async function handler(req, res) {
         name:           d.name,
         doj:            d.doj            || '',
         designation:    d.designation    || '',
+        phone:          d.phone          || '',
+        email:          d.email          || '',
         salary_per_day: parseFloat(d.salary_per_day) || 0,
         extra_day_rate: parseFloat(d.extra_day_rate) || 0,
         tds_percent:    parseFloat(d.tds_percent)    || 0,
@@ -111,6 +131,8 @@ module.exports = async function handler(req, res) {
           name:           d.name,
           doj:            d.doj            || '',
           designation:    d.designation    || '',
+          phone:          d.phone          || '',
+          email:          d.email          || '',
           salary_per_day: parseFloat(d.salary_per_day) || 0,
           extra_day_rate: parseFloat(d.extra_day_rate) || 0,
           tds_percent:    parseFloat(d.tds_percent)    || 0,

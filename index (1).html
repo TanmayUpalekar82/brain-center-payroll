@@ -802,7 +802,40 @@
     </div>
     <div class="login-err" id="loginErr">⚠ Invalid username or password.</div>
     <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    <div style="text-align:center; margin-top:16px">
+      <span style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--muted); cursor:pointer; text-decoration:underline; letter-spacing:1px"
+            onclick="showChangePwd()">Change Password</span>
+    </div>
     <div class="login-hint">Payroll Management System v2.0</div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="changePwdModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-head-title">Change Password</div>
+      <button class="modal-close" onclick="closeModal('changePwdModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="cp_current" placeholder="Enter current password"/>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="cp_new" placeholder="Enter new password"/>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="cp_confirm" placeholder="Re-enter new password"/>
+      </div>
+      <div id="cp_err" style="display:none; color:var(--rust); font-size:0.8rem; font-family:'DM Mono',monospace; margin-top:8px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="doChangePwd()">Update Password</button>
+      <button class="btn btn-secondary" onclick="closeModal('changePwdModal')">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -887,6 +920,12 @@
             <input type="text" id="add_desig" placeholder="e.g. Receptionist"/></div>
           <div class="field"><label>Date of Joining</label>
             <input type="date" id="add_doj"/></div>
+        </div>
+        <div class="g2" style="margin-top:16px">
+          <div class="field"><label>Contact Number</label>
+            <input type="tel" id="add_phone" placeholder="e.g. 9876543210"/></div>
+          <div class="field"><label>Email Address</label>
+            <input type="email" id="add_email" placeholder="e.g. rahul@email.com"/></div>
         </div>
 
         <hr class="divider"/>
@@ -982,6 +1021,12 @@
         <div class="field"><label>Date of Joining</label>
           <input type="date" id="em_doj"/></div>
       </div>
+      <div class="g2" style="margin-top:16px">
+        <div class="field"><label>Contact Number</label>
+          <input type="tel" id="em_phone" autocomplete="off"/></div>
+        <div class="field"><label>Email Address</label>
+          <input type="email" id="em_email" autocomplete="off"/></div>
+      </div>
       <hr class="divider"/>
       <div class="card-title">// Salary Structure</div>
       <div class="g4">
@@ -1053,6 +1098,58 @@ function doLogout() {
   document.getElementById('loginPass').value = '';
 }
 
+// ── CHANGE PASSWORD ──────────────────────────────────────────
+function showChangePwd() {
+  document.getElementById('cp_current').value = '';
+  document.getElementById('cp_new').value = '';
+  document.getElementById('cp_confirm').value = '';
+  document.getElementById('cp_err').style.display = 'none';
+  openModal('changePwdModal');
+}
+
+async function doChangePwd() {
+  const current = document.getElementById('cp_current').value;
+  const newPass = document.getElementById('cp_new').value;
+  const confirm = document.getElementById('cp_confirm').value;
+  const err = document.getElementById('cp_err');
+  err.style.display = 'none';
+
+  if (!current || !newPass || !confirm) {
+    err.textContent = '⚠ Please fill all fields.';
+    err.style.display = 'block';
+    return;
+  }
+  if (newPass !== confirm) {
+    err.textContent = '⚠ New password and confirm password do not match.';
+    err.style.display = 'block';
+    return;
+  }
+  if (newPass.length < 4) {
+    err.textContent = '⚠ New password must be at least 4 characters.';
+    err.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res  = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current, newPass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('changePwdModal');
+      toast('Password changed successfully!', 'ok');
+    } else {
+      err.textContent = '⚠ ' + (data.message || 'Could not change password.');
+      err.style.display = 'block';
+    }
+  } catch {
+    err.textContent = '⚠ Cannot reach server.';
+    err.style.display = 'block';
+  }
+}
+
 function showApp(name) {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('appPage').style.display = 'flex';
@@ -1113,6 +1210,8 @@ async function addEmployee() {
     name,
     designation:    document.getElementById('add_desig').value.trim(),
     doj:            document.getElementById('add_doj').value,
+    phone:          document.getElementById('add_phone').value.trim(),
+    email:          document.getElementById('add_email').value.trim(),
     salary_per_day: parseFloat(document.getElementById('add_spd').value) || 0,
     extra_day_rate: parseFloat(document.getElementById('add_edr').value) || 0,
     tds_percent:    parseFloat(document.getElementById('add_tds').value) || 0,
@@ -1140,7 +1239,7 @@ async function addEmployee() {
 }
 
 function clearAddForm() {
-  ['add_name','add_desig','add_doj','add_spd','add_edr','add_tds','add_pt']
+  ['add_name','add_desig','add_doj','add_phone','add_email','add_spd','add_edr','add_tds','add_pt']
     .forEach(id => document.getElementById(id).value = '');
 }
 
@@ -1156,7 +1255,7 @@ function renderEditTable() {
   wrap.innerHTML = `
     <table>
       <thead><tr>
-        <th>#</th><th>Name</th><th>Designation</th><th>DOJ</th>
+        <th>#</th><th>Name</th><th>Designation</th><th>Contact</th><th>DOJ</th>
         <th>₹/Day</th><th>TDS %</th><th>Prof. Tax</th><th>Actions</th>
       </tr></thead>
       <tbody>
@@ -1165,6 +1264,7 @@ function renderEditTable() {
             <td style="color:var(--muted)">${i+1}</td>
             <td class="td-name">${e.name}</td>
             <td class="td-desig">${e.designation || '—'}</td>
+            <td class="td-desig">${e.phone || '—'}${e.email ? '<br>'+e.email : ''}</td>
             <td class="td-desig">${e.doj || '—'}</td>
             <td class="td-gold">₹${parseFloat(e.salary_per_day||0).toFixed(0)}</td>
             <td>${parseFloat(e.tds_percent||0)}%</td>
@@ -1187,6 +1287,8 @@ async function openEditModal(id) {
     document.getElementById('em_name').value  = e.name;
     document.getElementById('em_desig').value = e.designation || '';
     document.getElementById('em_doj').value   = e.doj || '';
+    document.getElementById('em_phone').value = e.phone || '';
+    document.getElementById('em_email').value = e.email || '';
     document.getElementById('em_spd').value   = e.salary_per_day;
     document.getElementById('em_edr').value   = e.extra_day_rate;
     document.getElementById('em_tds').value   = e.tds_percent;
@@ -1230,6 +1332,8 @@ async function saveEditEmployee() {
     name,
     designation:    document.getElementById('em_desig').value.trim(),
     doj:            document.getElementById('em_doj').value,
+    phone:          document.getElementById('em_phone').value.trim(),
+    email:          document.getElementById('em_email').value.trim(),
     salary_per_day: parseFloat(document.getElementById('em_spd').value) || 0,
     extra_day_rate: parseFloat(document.getElementById('em_edr').value) || 0,
     tds_percent:    parseFloat(document.getElementById('em_tds').value) || 0,
@@ -1666,47 +1770,51 @@ async function loadExportView(month, label) {
       return;
     }
 
-    document.getElementById('exportCards').innerHTML = records.map(r => {
-      const base  = parseFloat(r.salary_per_day||0) * parseFloat(r.days_present||0);
-      const extra = parseFloat(r.extra_day_rate||0) * parseFloat(r.extra_days||0);
-      return `
-      <div class="export-emp-card">
-        <div class="export-emp-header">
-          <div>
-            <div class="export-emp-name">${r.name}</div>
-            <div class="export-emp-desig">${r.designation || 'Staff'} &nbsp;·&nbsp; DOJ: ${r.doj || '—'}</div>
-          </div>
-          <div class="export-nett">${fmt(parseFloat(r.nett||0))}</div>
-        </div>
-        <div class="export-grid">
-          <div class="export-col">
-            <div style="font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-family:'DM Mono',monospace; margin-bottom:10px">Attendance & Earnings</div>
-            <div class="export-row"><span class="export-row-label">Total Days</span><span class="export-row-val">30</span></div>
-            <div class="export-row"><span class="export-row-label">Days Present</span><span class="export-row-val earn">${r.days_present}</span></div>
-            <div class="export-row"><span class="export-row-label">Days Absent</span><span class="export-row-val deduct">${r.days_absent}</span></div>
-            <div class="export-row"><span class="export-row-label">Extra Days</span><span class="export-row-val">${r.extra_days}</span></div>
-            <div class="export-row"><span class="export-row-label">Base Salary</span><span class="export-row-val earn">${fmt(base)}</span></div>
-            <div class="export-row"><span class="export-row-label">Extra Earnings</span><span class="export-row-val earn">${fmt(extra)}</span></div>
-            <div class="export-row"><span class="export-row-label">Incentive</span><span class="export-row-val earn">${fmt(parseFloat(r.incentive||0))}</span></div>
-            <div class="export-row"><span class="export-row-label">Other Dues</span><span class="export-row-val earn">${fmt(parseFloat(r.other_dues||0))}</span></div>
-            <div class="export-row" style="font-weight:600"><span class="export-row-label">Gross Salary</span><span class="export-row-val">${fmt(parseFloat(r.gross||0))}</span></div>
-          </div>
-          <div class="export-col">
-            <div style="font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--rust); font-family:'DM Mono',monospace; margin-bottom:10px">Deductions</div>
-            <div class="export-row"><span class="export-row-label">TDS (${r.tds_percent}%)</span><span class="export-row-val deduct">${fmt(parseFloat(r.tds_amount||0))}</span></div>
-            <div class="export-row"><span class="export-row-label">Advance</span><span class="export-row-val deduct">${fmt(parseFloat(r.advance||0))}</span></div>
-            <div class="export-row"><span class="export-row-label">Other Deductions</span><span class="export-row-val deduct">${fmt(parseFloat(r.other_deductions||0))}</span></div>
-            <div class="export-row"><span class="export-row-label">Professional Tax</span><span class="export-row-val deduct">${fmt(parseFloat(r.prof_tax||0))}</span></div>
-            <div class="export-row" style="margin-top:12px; padding-top:12px; border-top:2px solid var(--border); font-weight:700">
-              <span class="export-row-label" style="color:var(--ink)">Net Payable</span>
-              <span class="export-row-val" style="color:var(--gold); font-size:1rem">${fmt(parseFloat(r.nett||0))}</span>
-            </div>
-            <div style="margin-top:16px; font-size:0.72rem; color:var(--muted); font-family:'DM Mono',monospace">Processed: ${r.processed_at || '—'}</div>
-          </div>
-        </div>
-        ${r.comment ? `<div class="export-comment"><strong>📝 Note</strong><br/>${r.comment}</div>` : ''}
+    document.getElementById('exportCards').innerHTML = `
+      <div style="overflow-x:auto">
+        <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+          <thead>
+            <tr style="background:var(--ink); color:var(--gold-pale)">
+              <th style="padding:12px 16px; text-align:left; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">#</th>
+              <th style="padding:12px 16px; text-align:left; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Name</th>
+              <th style="padding:12px 16px; text-align:left; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Designation</th>
+              <th style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Total Salary</th>
+              <th style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Absent Days</th>
+              <th style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">TDS %</th>
+              <th style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Net Payable</th>
+              <th style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${records.map((r, i) => `
+              <tr style="border-bottom:1px solid var(--border); ${i%2===0 ? 'background:var(--white)' : 'background:var(--paper)'}">
+                <td style="padding:12px 16px; color:var(--muted); font-family:'DM Mono',monospace">${i+1}</td>
+                <td style="padding:12px 16px; font-weight:600; color:var(--ink)">${r.name}</td>
+                <td style="padding:12px 16px; color:var(--muted); font-family:'DM Mono',monospace; font-size:0.8rem">${r.designation || '—'}</td>
+                <td style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; color:var(--teal); font-weight:500">${fmt(parseFloat(r.gross||0))}</td>
+                <td style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace; color:var(--rust)">${r.days_absent}</td>
+                <td style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace">${r.tds_percent}%</td>
+                <td style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; color:var(--gold); font-weight:700; font-size:1rem">${fmt(parseFloat(r.nett||0))}</td>
+                <td style="padding:12px 16px; text-align:center">
+                  ${r.paid
+                    ? `<span style="background:#e8f5f1; color:var(--teal); border:1px solid #b8ddd4; border-radius:20px; padding:3px 10px; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:1px">✅ PAID</span>`
+                    : `<span style="background:#fdf0ee; color:var(--rust); border:1px solid #f0c0bb; border-radius:20px; padding:3px 10px; font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:1px">⏳ PENDING</span>`
+                  }
+                </td>
+              </tr>`).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background:var(--gold-pale); border-top:2px solid var(--gold)">
+              <td colspan="3" style="padding:12px 16px; font-weight:700; font-family:'DM Mono',monospace; font-size:0.8rem">TOTAL (${records.length} employees)</td>
+              <td style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; font-weight:700; color:var(--teal)">${fmt(records.reduce((s,r)=>s+parseFloat(r.gross||0),0))}</td>
+              <td style="padding:12px 16px; text-align:center; font-family:'DM Mono',monospace; font-weight:700; color:var(--rust)">${records.reduce((s,r)=>s+parseFloat(r.days_absent||0),0)}</td>
+              <td></td>
+              <td style="padding:12px 16px; text-align:right; font-family:'DM Mono',monospace; font-weight:700; color:var(--gold); font-size:1.05rem">${fmt(records.reduce((s,r)=>s+parseFloat(r.nett||0),0))}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>`;
-    }).join('');
   } catch {
     document.getElementById('exportCards').innerHTML = '<div class="empty">Could not load records.</div>';
   }
@@ -1734,6 +1842,9 @@ function closeModal(id) {
 }
 document.getElementById('editModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal('editModal');
+});
+document.getElementById('changePwdModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('changePwdModal');
 });
 
 // ═══════════════════════════════════════════════════════════
