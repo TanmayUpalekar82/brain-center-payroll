@@ -1873,8 +1873,6 @@ function exportToExcel() {
     'Other Deductions (₹)',
     'Professional Tax (₹)',
     'Net Payable (₹)',
-    'Payment Status',
-    'Comments',
   ]);
 
   // Data rows
@@ -1899,8 +1897,6 @@ function exportToExcel() {
       parseFloat(r.other_deductions || 0),
       parseFloat(r.prof_tax         || 0),
       parseFloat(r.nett             || 0),
-      r.paid ? 'PAID' : 'PENDING',
-      r.comment || '',
     ]);
   });
 
@@ -1924,8 +1920,6 @@ function exportToExcel() {
     '',
     '',
     parseFloat(records.reduce((s, r) => s + parseFloat(r.nett || 0), 0).toFixed(2)),
-    '',
-    '',
   ]);
 
   // ── Build workbook ───────────────────────────────────────
@@ -1951,8 +1945,6 @@ function exportToExcel() {
     { wch: 18 }, // Other Ded
     { wch: 16 }, // Prof Tax
     { wch: 15 }, // Net Payable
-    { wch: 12 }, // Status
-    { wch: 30 }, // Comments
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31));
