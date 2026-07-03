@@ -1437,8 +1437,9 @@ async function loadSalaryModule() {
     const otherDuesVal = saved ? saved.other_dues       : 0;
     const advanceVal   = saved ? saved.advance          : 0;
     const otherDedVal  = saved ? saved.other_deductions : 0;
+    const paidByVal    = saved ? (saved.paid_by || '')  : '';
     const isSaved      = !!saved;
-    const k = idx; // safe numeric key for DOM IDs
+    const k = idx;
 
     return `
     <div class="salary-row-card" id="src_${k}" data-empid="${emp.id}">
@@ -1525,6 +1526,15 @@ async function loadSalaryModule() {
           <textarea class="comment-box" id="comment_${k}" placeholder="e.g. Late by 2 days in first week, bonus for Diwali...">${saved ? (saved.comment || '') : ''}</textarea>
         </div>
 
+        <div style="margin-top:14px; max-width:280px">
+          <label class="comment-label">💳 Salary Paid By</label>
+          <select id="paidby_${k}" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:3px; background:var(--paper); font-family:'DM Sans',sans-serif; font-size:0.92rem; color:var(--ink); outline:none;">
+            <option value="" ${paidByVal==='' ? 'selected' : ''}>— Select —</option>
+            <option value="Dr. Pawan Ojha"  ${paidByVal==='Dr. Pawan Ojha'  ? 'selected' : ''}>Dr. Pawan Ojha</option>
+            <option value="Dr. Nishu Ojha"  ${paidByVal==='Dr. Nishu Ojha'  ? 'selected' : ''}>Dr. Nishu Ojha</option>
+          </select>
+        </div>
+
         <div class="btn-row">
           <button class="btn btn-primary" onclick="saveSalaryRow(${k})">
             💾 Save Salary
@@ -1603,6 +1613,7 @@ async function saveSalaryRow(k) {
     tds_amount:       c.tdsAmt,
     nett:             c.nett,
     comment:          (document.getElementById('comment_' + k)?.value || '').trim(),
+    paid_by:          (document.getElementById('paidby_' + k)?.value || ''),
   };
 
   try {
@@ -1873,6 +1884,7 @@ function exportToExcel() {
     'Other Deductions (₹)',
     'Professional Tax (₹)',
     'Net Payable (₹)',
+    'Salary Paid By',
   ]);
 
   // Data rows
@@ -1897,6 +1909,7 @@ function exportToExcel() {
       parseFloat(r.other_deductions || 0),
       parseFloat(r.prof_tax         || 0),
       parseFloat(r.nett             || 0),
+      r.paid_by || '',
     ]);
   });
 
@@ -1920,6 +1933,7 @@ function exportToExcel() {
     '',
     '',
     parseFloat(records.reduce((s, r) => s + parseFloat(r.nett || 0), 0).toFixed(2)),
+    '',
   ]);
 
   // ── Build workbook ───────────────────────────────────────
@@ -1945,6 +1959,7 @@ function exportToExcel() {
     { wch: 18 }, // Other Ded
     { wch: 16 }, // Prof Tax
     { wch: 15 }, // Net Payable
+    { wch: 18 }, // Salary Paid By
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31));

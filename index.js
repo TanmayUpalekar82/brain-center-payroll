@@ -60,13 +60,12 @@ module.exports = async function handler(req, res) {
     // ── CHANGE PASSWORD ────────────────────────────────────
     if (match(url, 'change-password') && method === 'POST') {
       const { current, newPass } = req.body;
-      // Read stored password from env or default
-      const stored = process.env.APP_PASSWORD || 'bc@123';
-      if (current !== stored) {
+      const settings  = db.collection('settings');
+      const pwdRecord = await settings.findOne({ key: 'password' });
+      const validPass = pwdRecord ? pwdRecord.value : (process.env.APP_PASSWORD || 'bc@123');
+      if (current !== validPass) {
         return json(res, { success: false, message: 'Current password is incorrect' }, 401);
       }
-      // Store new password in MongoDB settings collection
-      const settings = db.collection('settings');
       await settings.updateOne({ key: 'password' }, { $set: { key: 'password', value: newPass } }, { upsert: true });
       return json(res, { success: true });
     }
@@ -195,7 +194,8 @@ module.exports = async function handler(req, res) {
         gross:            d.gross,
         tds_amount:       d.tds_amount,
         nett:             d.nett,
-        comment:          d.comment || '',
+        comment:          d.comment  || '',
+        paid_by:          d.paid_by  || '',
         processed_at:     now(),
       };
       if (existing) {
