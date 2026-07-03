@@ -780,6 +780,7 @@
       .tab-btn { padding: 14px 14px; font-size: 0.6rem; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -979,7 +980,7 @@
       <div class="page-header">
         <div class="section-tag">Reports</div>
         <div class="page-title">Export Data</div>
-        <div class="page-sub">Select a month to view all employee salary details. Print for CA or records.</div>
+        <div class="page-sub">Select a month to view all employee salary details and export to Excel for CA.</div>
       </div>
       <div id="exportMonthList">
         <div class="empty"><div class="empty-icon">📅</div>Loading months...</div>
@@ -991,7 +992,7 @@
             <div style="font-size:0.85rem; color:var(--muted)" id="exportEmpCount"></div>
           </div>
           <div style="display:flex; gap:10px">
-            <button class="btn btn-teal" onclick="printExport()">🖨 Print All Slips</button>
+            <button class="btn btn-teal" onclick="exportToExcel()">📊 Export as Excel</button>
             <button class="btn btn-secondary" onclick="closeExportView()">← Back to Months</button>
           </div>
         </div>
@@ -1765,6 +1766,11 @@ async function loadExportView(month, label) {
     const records = data.records || [];
     document.getElementById('exportEmpCount').textContent = records.length + ' employee(s) processed';
 
+    // Store globally for Excel export
+    window._exportRecords = records;
+    window._exportMonth   = month;
+    window._exportLabel   = label;
+
     if (!records.length) {
       document.getElementById('exportCards').innerHTML = '<div class="empty">No records for this month.</div>';
       return;
@@ -1825,8 +1831,133 @@ function closeExportView() {
   document.getElementById('exportMonthList').style.display = 'block';
 }
 
-function printExport() {
-  window.print();
+function exportToExcel() {
+  const records = window._exportRecords;
+  const month   = window._exportMonth;
+  const label   = window._exportLabel || month;
+
+  if (!records || !records.length) {
+    toast('No data to export.', 'err');
+    return;
+  }
+
+  // Build the month name for the file e.g. "July 2026"
+  const [yr, mo] = month.split('-');
+  const monthName = new Date(yr, mo - 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const fileName  = `Brain Centre Clinic - Payroll ${monthName}.xlsx`;
+
+  // ── Sheet header rows ────────────────────────────────────
+  const wsData = [];
+
+  // Title rows
+  wsData.push(['Brain Centre Clinic — Payroll']);
+  wsData.push([monthName]);
+  wsData.push([]); // blank row
+
+  // Column headers
+  wsData.push([
+    '#',
+    'Name',
+    'Designation',
+    'Days Present',
+    'Days Absent',
+    'Extra Days',
+    'Base Salary (₹)',
+    'Extra Earnings (₹)',
+    'Incentive (₹)',
+    'Other Dues (₹)',
+    'Gross Salary (₹)',
+    'TDS %',
+    'TDS Amount (₹)',
+    'Advance (₹)',
+    'Other Deductions (₹)',
+    'Professional Tax (₹)',
+    'Net Payable (₹)',
+    'Payment Status',
+    'Comments',
+  ]);
+
+  // Data rows
+  records.forEach((r, i) => {
+    const base  = parseFloat(r.salary_per_day || 0) * parseFloat(r.days_present || 0);
+    const extra = parseFloat(r.extra_day_rate  || 0) * parseFloat(r.extra_days   || 0);
+    wsData.push([
+      i + 1,
+      r.name,
+      r.designation || '',
+      parseFloat(r.days_present     || 0),
+      parseFloat(r.days_absent      || 0),
+      parseFloat(r.extra_days       || 0),
+      parseFloat(base.toFixed(2)),
+      parseFloat(extra.toFixed(2)),
+      parseFloat(r.incentive        || 0),
+      parseFloat(r.other_dues       || 0),
+      parseFloat(r.gross            || 0),
+      parseFloat(r.tds_percent      || 0),
+      parseFloat(r.tds_amount       || 0),
+      parseFloat(r.advance          || 0),
+      parseFloat(r.other_deductions || 0),
+      parseFloat(r.prof_tax         || 0),
+      parseFloat(r.nett             || 0),
+      r.paid ? 'PAID' : 'PENDING',
+      r.comment || '',
+    ]);
+  });
+
+  // Totals row
+  wsData.push([]);
+  wsData.push([
+    '',
+    'TOTAL',
+    '',
+    records.reduce((s, r) => s + parseFloat(r.days_present || 0), 0),
+    records.reduce((s, r) => s + parseFloat(r.days_absent  || 0), 0),
+    '',
+    '',
+    '',
+    '',
+    '',
+    parseFloat(records.reduce((s, r) => s + parseFloat(r.gross || 0), 0).toFixed(2)),
+    '',
+    parseFloat(records.reduce((s, r) => s + parseFloat(r.tds_amount || 0), 0).toFixed(2)),
+    '',
+    '',
+    '',
+    parseFloat(records.reduce((s, r) => s + parseFloat(r.nett || 0), 0).toFixed(2)),
+    '',
+    '',
+  ]);
+
+  // ── Build workbook ───────────────────────────────────────
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 4  }, // #
+    { wch: 22 }, // Name
+    { wch: 16 }, // Designation
+    { wch: 13 }, // Days Present
+    { wch: 12 }, // Days Absent
+    { wch: 11 }, // Extra Days
+    { wch: 16 }, // Base Salary
+    { wch: 17 }, // Extra Earnings
+    { wch: 13 }, // Incentive
+    { wch: 13 }, // Other Dues
+    { wch: 15 }, // Gross
+    { wch: 8  }, // TDS %
+    { wch: 14 }, // TDS Amt
+    { wch: 12 }, // Advance
+    { wch: 18 }, // Other Ded
+    { wch: 16 }, // Prof Tax
+    { wch: 15 }, // Net Payable
+    { wch: 12 }, // Status
+    { wch: 30 }, // Comments
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31));
+  XLSX.writeFile(wb, fileName);
+  toast('Excel file downloaded!', 'ok');
 }
 
 // ═══════════════════════════════════════════════════════════
